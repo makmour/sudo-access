@@ -22,7 +22,7 @@ class SudoWP_Admin {
 
 		wp_enqueue_style( 
 			'sudowp-admin-css', 
-			SUDOWP_URL . 'assets/css/sudowp-admin.css', 
+			SUDOWP_URL . 'css/sudowp-admin.css', 
 			array(), 
 			SUDOWP_VERSION 
 		);
