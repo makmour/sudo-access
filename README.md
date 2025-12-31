@@ -1,7 +1,4 @@
-# Αρχείο: make_readme.py
-import os
-
-content = r"""# SudoWP – Secure Temporary Login & Audit Log
+# SudoWP
 
 ![License](https://img.shields.io/badge/license-GPLv2-blue.svg)
 ![PHP Version](https://img.shields.io/badge/php-%3E%3D7.4-8892BF.svg)
