@@ -133,7 +133,7 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 		}
 
 		$is_temp = get_user_meta( $user->ID, '_sudowp_is_temporary', true );
-		$link = SudoWP_Auth::get_active_link( $user->ID );
+		$link    = SudoWP_Auth::get_active_link( $user->ID );
 
 		WP_CLI::log( "----------------------------------------" );
 		WP_CLI::log( "User ID: " . $user->ID );
@@ -173,7 +173,7 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 			WP_CLI::error( "User is NOT a temporary Sudo user. Cannot delete." );
 		}
 
-		require_once( ABSPATH . 'wp-admin/includes/user.php' );
+		require_once ABSPATH . 'wp-admin/includes/user.php';
 		
 		if ( wp_delete_user( $user->ID, 1 ) ) {
 			SudoWP_Logger::log( 0, 'sudo_user_revoked', "CLI: Deleted temporary user ID: {$user->ID}" );
@@ -232,7 +232,7 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 		$users = get_users( array( 'meta_key' => '_sudowp_is_temporary', 'meta_value' => true ) );
 		$count = 0;
 		if ( ! empty( $users ) ) {
-			require_once( ABSPATH . 'wp-admin/includes/user.php' );
+			require_once ABSPATH . 'wp-admin/includes/user.php';
 			foreach ( $users as $user ) {
 				wp_delete_user( $user->ID, 1 );
 				$count++;
@@ -242,7 +242,8 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 
 		// 2. Drop Tables
 		$table_name = $wpdb->prefix . 'sudowp_logs';
-		$wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
 		WP_CLI::log( "Dropped logs table." );
 
 		WP_CLI::success( "System purged successfully." );

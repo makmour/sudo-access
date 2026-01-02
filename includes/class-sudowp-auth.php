@@ -33,7 +33,7 @@ class SudoWP_Auth {
 			}
 
 			$password = wp_generate_password( 32, true );
-			$user_id = wp_create_user( $username, $password, $email );
+			$user_id  = wp_create_user( $username, $password, $email );
 
 			if ( is_wp_error( $user_id ) ) {
 				return $user_id;
@@ -116,11 +116,13 @@ class SudoWP_Auth {
 	 * Handle the Login Request
 	 */
 	public function handle_sudo_login() {
+		// Fix: Use wp_unslash() before checking empty/isset for best practice
 		if ( ! isset( $_GET['sudowp_token'] ) ) {
 			return;
 		}
 
-		$token = sanitize_text_field( $_GET['sudowp_token'] );
+		// Fix: Unslash and Sanitize
+		$token = sanitize_text_field( wp_unslash( $_GET['sudowp_token'] ) );
 		$data  = get_transient( 'sudowp_' . $token );
 
 		if ( ! $data ) {
@@ -128,7 +130,12 @@ class SudoWP_Auth {
 		}
 
 		if ( ! empty( $data['restrict_ip'] ) ) {
-			$current_ip = $_SERVER['REMOTE_ADDR'];
+			$current_ip = '';
+			// Fix: Sanitize Remote Addr
+			if ( isset( $_SERVER['REMOTE_ADDR'] ) ) {
+				$current_ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+			}
+
 			if ( $current_ip !== $data['restrict_ip'] ) {
 				SudoWP_Logger::log( $data['user_id'], 'failed_login_ip_mismatch', "Expected: {$data['restrict_ip']}, Got: $current_ip" );
 				wp_die( 'SudoWP: IP Address mismatch.', 'Access Denied', array( 'response' => 403 ) );

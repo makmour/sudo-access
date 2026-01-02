@@ -1,7 +1,7 @@
 <?php
 /*
  Plugin Name: Sudo Access
- Plugin URI: https://sudowp.com/
+ Plugin URI: https://github.com/makmour/sudo-access
  Description: Secure temporary login & audit logging for professionals.
  Version: 0.2.0
  Author: WP Republic
@@ -60,11 +60,13 @@ class SudoWP {
 			}
 		}
 
-		require_once( ABSPATH . 'wp-admin/includes/user.php' );
+		require_once ABSPATH . 'wp-admin/includes/user.php';
 		wp_delete_user( $user_id, 1 );
 		
 		// Log the system action
-		SudoWP_Logger::log( 0, 'system_user_cleanup', "Automatically deleted temporary user ID: $user_id" );
+		if ( class_exists( 'SudoWP_Logger' ) ) {
+			SudoWP_Logger::log( 0, 'system_user_cleanup', "Automatically deleted temporary user ID: $user_id" );
+		}
 	}
 
 	/**
@@ -73,22 +75,24 @@ class SudoWP {
 	public function process_log_retention() {
 		$retention = get_option( 'sudowp_log_retention', 'never' );
 
-		if ( $retention === 'never' ) {
+		if ( 'never' === $retention ) {
 			return;
 		}
 
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'sudowp_logs';
-		$days = 0;
+		$days       = 0;
 
-		if ( $retention === 'weekly' ) {
+		if ( 'weekly' === $retention ) {
 			$days = 7;
-		} elseif ( $retention === 'monthly' ) {
+		} elseif ( 'monthly' === $retention ) {
 			$days = 30;
 		}
 
 		if ( $days > 0 ) {
-			// Delete logs older than X days safely using prepare
+			// Delete logs older than X days safely using prepare.
+			// The table name is interpolated but defined strictly above, so we ignore the CS warning.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->query( 
 				$wpdb->prepare( 
 					"DELETE FROM {$table_name} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", 
@@ -103,7 +107,7 @@ class SudoWP {
 	 */
 	public static function activate() {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'sudowp_logs';
+		$table_name      = $wpdb->prefix . 'sudowp_logs';
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE $table_name (
@@ -116,7 +120,7 @@ class SudoWP {
 			PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
 		// Schedule Daily Maintenance if not exists
@@ -136,7 +140,7 @@ class SudoWP {
 		) );
 
 		if ( ! empty( $users ) ) {
-			require_once( ABSPATH . 'wp-admin/includes/user.php' );
+			require_once ABSPATH . 'wp-admin/includes/user.php';
 			foreach ( $users as $user ) {
 				wp_delete_user( $user->ID, 1 );
 			}
