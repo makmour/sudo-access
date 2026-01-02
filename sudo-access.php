@@ -1,34 +1,35 @@
 <?php
 /*
- Plugin Name: SudoWP
- Plugin URI: wprepublic.com
+ Plugin Name: Sudo Access
+ Plugin URI: https://sudowp.com/
  Description: Secure temporary login & audit logging for professionals.
  Version: 0.2.0
  Author: WP Republic
  Author URI: https://wprepublic.com/
  License: GPL-2.0+
  License URI: http://www.gnu.org/licenses/gpl-2.0.txt
- Text Domain: sudowp
+ Text Domain: sudo-access
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-define( 'SUDOWP_VERSION', '0.2.0' );
-define( 'SUDOWP_PATH', plugin_dir_path( __FILE__ ) );
-define( 'SUDOWP_URL', plugin_dir_url( __FILE__ ) );
+// Define Constants
+define( 'SUDO_ACCESS_VERSION', '0.2.0' );
+define( 'SUDO_ACCESS_PATH', plugin_dir_path( __FILE__ ) );
+define( 'SUDO_ACCESS_URL', plugin_dir_url( __FILE__ ) );
 
 // Autoload classes
-require_once SUDOWP_PATH . 'includes/class-sudowp-auth.php';
-require_once SUDOWP_PATH . 'includes/class-sudowp-logger.php';
+require_once SUDO_ACCESS_PATH . 'includes/class-sudowp-auth.php';
+require_once SUDO_ACCESS_PATH . 'includes/class-sudowp-logger.php';
 
 if ( is_admin() ) {
-	require_once SUDOWP_PATH . 'includes/class-sudowp-admin.php';
+	require_once SUDO_ACCESS_PATH . 'includes/class-sudowp-admin.php';
 }
 
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
-	require_once SUDOWP_PATH . 'cli/class-sudowp-cli.php';
+	require_once SUDO_ACCESS_PATH . 'cli/class-sudowp-cli.php';
 }
 
 /**
@@ -61,6 +62,8 @@ class SudoWP {
 
 		require_once( ABSPATH . 'wp-admin/includes/user.php' );
 		wp_delete_user( $user_id, 1 );
+		
+		// Log the system action
 		SudoWP_Logger::log( 0, 'system_user_cleanup', "Automatically deleted temporary user ID: $user_id" );
 	}
 
@@ -85,10 +88,10 @@ class SudoWP {
 		}
 
 		if ( $days > 0 ) {
-			// Delete logs older than X days
+			// Delete logs older than X days safely using prepare
 			$wpdb->query( 
 				$wpdb->prepare( 
-					"DELETE FROM $table_name WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", 
+					"DELETE FROM {$table_name} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", 
 					$days 
 				) 
 			);
@@ -126,7 +129,7 @@ class SudoWP {
 	 * Deactivation: Cleanup Hooks & Users
 	 */
 	public static function deactivate() {
-		// Clean up users
+		// Clean up users marked as temporary
 		$users = get_users( array(
 			'meta_key'   => '_sudowp_is_temporary',
 			'meta_value' => true,
