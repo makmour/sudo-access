@@ -1,11 +1,11 @@
-/* SudoWP Admin Styles */
+/* Sudo Access Admin Styles */
 
-.sudowp-wrap {
+.sudo-access-wrap {
     margin-top: 20px;
 }
 
 /* Flex Layout for Cards */
-.sudowp-flex-container {
+.sudo-access-flex-container {
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
@@ -13,7 +13,7 @@
 }
 
 /* Custom Card Style to avoid WP default constraints */
-.sudowp-card {
+.sudo-access-card {
     background: #fff;
     padding: 20px;
     box-shadow: 0 1px 1px rgba(0,0,0,.04);
@@ -24,26 +24,26 @@
     box-sizing: border-box;
 }
 
-.sudowp-card.danger {
+.sudo-access-card.danger {
     border-left-color: #d63638; /* Red */
 }
 
-.sudowp-card.settings {
+.sudo-access-card.settings {
     border-left-color: #464646; /* Dark Grey */
 }
 
-.sudowp-card h2, 
-.sudowp-card h3 {
+.sudo-access-card h2, 
+.sudo-access-card h3 {
     margin-top: 0;
 }
 
 /* Form Elements Width Fix */
-.sudowp-full-width {
+.sudo-access-full-width {
     width: 100%;
 }
 
 /* Full Width Logs Table Container */
-.sudowp-logs-container {
+.sudo-access-logs-container {
     background: #fff;
     border: 1px solid #c3c4c7;
     box-shadow: 0 1px 1px rgba(0,0,0,.04);
@@ -57,18 +57,18 @@
 }
 
 /* The Table Itself */
-.sudowp-table {
+.sudo-access-table {
     width: 100%;
     border: none;
     box-shadow: none;
 }
 
 /* Column Specifics */
-.sudowp-col-nowrap {
+.sudo-access-col-nowrap {
     white-space: nowrap;
 }
 
-.sudowp-badge {
+.sudo-access-badge {
     background: #f0f0f1;
     padding: 2px 6px;
     border-radius: 3px;
@@ -77,12 +77,12 @@
 }
 
 /* Copy Button Input Helper */
-.sudowp-hidden-input {
+.sudo-access-hidden-input {
     position: absolute;
     left: -9999px;
 }
 
-.sudowp-copy-wrapper {
+.sudo-access-copy-wrapper {
     display: flex; 
     gap: 10px; 
     max-width: 600px; 

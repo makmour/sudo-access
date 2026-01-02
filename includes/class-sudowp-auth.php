@@ -2,7 +2,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-class SudoWP_Auth {
+class Sudo_Access_Auth {
 
 	public function __construct() {
 		// Listen for the sudo link parameter
@@ -25,7 +25,7 @@ class SudoWP_Auth {
 		// 2. If not found, CREATE NEW USER
 		if ( ! $user ) {
 			if ( empty( $username ) || empty( $email ) ) {
-				return new WP_Error( 'missing_data', 'To create a new Sudo user, both Username and Email are required.' );
+				return new WP_Error( 'missing_data', 'To create a new Sudo Access user, both Username and Email are required.' );
 			}
 
 			if ( username_exists( $username ) ) {
@@ -42,11 +42,11 @@ class SudoWP_Auth {
 			$user = get_user_by( 'id', $user_id );
 			$user->set_role( $role );
 			
-			// Mark as temporary
-			update_user_meta( $user_id, '_sudowp_is_temporary', true );
+			// Mark as temporary with new meta key
+			update_user_meta( $user_id, '_sudo_access_is_temporary', true );
 
 			// Schedule Auto-Deletion
-			wp_schedule_single_event( time() + $expiry_seconds, 'sudowp_scheduled_delete_user', array( $user_id ) );
+			wp_schedule_single_event( time() + $expiry_seconds, 'sudo_access_scheduled_delete_user', array( $user_id ) );
 			
 			$new_user_created = true;
 		}
@@ -65,11 +65,11 @@ class SudoWP_Auth {
 			'restrict_ip' => $restrict_ip,
 		);
 
-		// Store in Transient for expiry handling
-		set_transient( 'sudowp_' . $token, $data, $expiry_seconds );
+		// Store in Transient for expiry handling (New Prefix)
+		set_transient( 'sudo_access_' . $token, $data, $expiry_seconds );
 
-		// NEW: Store in User Meta to retrieve it later (for UI/CLI listing)
-		update_user_meta( $user_id, '_sudowp_active_token', $token );
+		// Store in User Meta (New Key)
+		update_user_meta( $user_id, '_sudo_access_active_token', $token );
 
 		return $token;
 	}
@@ -78,19 +78,19 @@ class SudoWP_Auth {
 	 * Retrieve the active link for a user (if valid)
 	 */
 	public static function get_active_link( $user_id ) {
-		$token = get_user_meta( $user_id, '_sudowp_active_token', true );
+		$token = get_user_meta( $user_id, '_sudo_access_active_token', true );
 		
 		if ( ! $token ) {
 			return false;
 		}
 
-		// Verify if the transient still exists (hasn't expired)
-		if ( ! get_transient( 'sudowp_' . $token ) ) {
-			delete_user_meta( $user_id, '_sudowp_active_token' ); // Cleanup
+		// Verify if the transient still exists
+		if ( ! get_transient( 'sudo_access_' . $token ) ) {
+			delete_user_meta( $user_id, '_sudo_access_active_token' ); // Cleanup
 			return false;
 		}
 
-		return add_query_arg( 'sudowp_token', $token, site_url() );
+		return add_query_arg( 'sudo_token', $token, site_url() );
 	}
 
 	/**
@@ -116,36 +116,40 @@ class SudoWP_Auth {
 	 * Handle the Login Request
 	 */
 	public function handle_sudo_login() {
-		// Fix: Use wp_unslash() before checking empty/isset for best practice
-		if ( ! isset( $_GET['sudowp_token'] ) ) {
+		// Token param is now 'sudo_token'
+		
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['sudo_token'] ) ) {
 			return;
 		}
 
-		// Fix: Unslash and Sanitize
-		$token = sanitize_text_field( wp_unslash( $_GET['sudowp_token'] ) );
-		$data  = get_transient( 'sudowp_' . $token );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$token = sanitize_text_field( wp_unslash( $_GET['sudo_token'] ) );
+		$data  = get_transient( 'sudo_access_' . $token );
 
 		if ( ! $data ) {
-			wp_die( 'SudoWP: This Sudo Link has expired or is invalid.', 'Access Denied', array( 'response' => 403 ) );
+			wp_die( 'Sudo Access: This link has expired or is invalid.', 'Access Denied', array( 'response' => 403 ) );
 		}
 
 		if ( ! empty( $data['restrict_ip'] ) ) {
 			$current_ip = '';
 			// Fix: Sanitize Remote Addr
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated
 			if ( isset( $_SERVER['REMOTE_ADDR'] ) ) {
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				$current_ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
 			}
 
 			if ( $current_ip !== $data['restrict_ip'] ) {
-				SudoWP_Logger::log( $data['user_id'], 'failed_login_ip_mismatch', "Expected: {$data['restrict_ip']}, Got: $current_ip" );
-				wp_die( 'SudoWP: IP Address mismatch.', 'Access Denied', array( 'response' => 403 ) );
+				Sudo_Access_Logger::log( $data['user_id'], 'failed_login_ip_mismatch', "Expected: {$data['restrict_ip']}, Got: $current_ip" );
+				wp_die( 'Sudo Access: IP Address mismatch.', 'Access Denied', array( 'response' => 403 ) );
 			}
 		}
 
 		$user_id = $data['user_id'];
 		wp_set_auth_cookie( $user_id );
 		
-		SudoWP_Logger::log( $user_id, 'sudo_login_success', 'Logged in via Sudo Link.' );
+		Sudo_Access_Logger::log( $user_id, 'sudo_login_success', 'Logged in via Sudo Link.' );
 
 		wp_safe_redirect( admin_url() );
 		exit;

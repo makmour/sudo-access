@@ -2,7 +2,7 @@
 
 if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) { return; }
 
-class SudoWP_CLI_Command extends WP_CLI_Command {
+class Sudo_Access_CLI_Command extends WP_CLI_Command {
 
 	/**
 	 * Create a temporary sudo link.
@@ -39,8 +39,8 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 		
 		$seconds    = $hours * HOUR_IN_SECONDS;
 
-		// Use the centralized Auth logic
-		$result = SudoWP_Auth::get_or_create_user( $username, $email, $role, $seconds );
+		// Use the centralized Auth logic (Updated Class)
+		$result = Sudo_Access_Auth::get_or_create_user( $username, $email, $role, $seconds );
 
 		if ( is_wp_error( $result ) ) {
 			WP_CLI::error( "Error: " . $result->get_error_message() );
@@ -50,14 +50,14 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 		$new_user_created = $result['created_new'];
 
 		// Generate Token
-		$token = SudoWP_Auth::generate_token( $user->ID, $seconds, $ip );
-		$link  = add_query_arg( 'sudowp_token', $token, site_url() );
+		$token = Sudo_Access_Auth::generate_token( $user->ID, $seconds, $ip );
+		$link  = add_query_arg( 'sudo_token', $token, site_url() );
 
 		// Send Email
-		SudoWP_Auth::send_access_email( $user, $link, $hours );
+		Sudo_Access_Auth::send_access_email( $user, $link, $hours );
 
 		// Output
-		WP_CLI::success( "Sudo Link Created & Emailed!" );
+		WP_CLI::success( "Sudo Access Link Created & Emailed!" );
 		WP_CLI::log( "----------------------------------------" );
 		WP_CLI::log( "User: " . $user->user_login );
 		WP_CLI::log( "URL: " . $link );
@@ -87,20 +87,21 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 	 * @subcommand list
 	 */
 	public function list_users( $args, $assoc_args ) {
+		// Updated meta key
 		$users = get_users( array(
-			'meta_key'   => '_sudowp_is_temporary',
-			'meta_value' => true,
+			'meta_key'   => '_sudo_access_is_temporary', // phpcs:ignore WordPress.DB.SlowDBQuery
+			'meta_value' => true, // phpcs:ignore WordPress.DB.SlowDBQuery
 		) );
 
 		if ( empty( $users ) ) {
-			WP_CLI::warning( "No active temporary Sudo users found." );
+			WP_CLI::warning( "No active temporary Sudo Access users found." );
 			return;
 		}
 
 		$data = array();
 
 		foreach ( $users as $user ) {
-			$link = SudoWP_Auth::get_active_link( $user->ID );
+			$link = Sudo_Access_Auth::get_active_link( $user->ID );
 			
 			$data[] = array(
 				'ID'     => $user->ID,
@@ -132,14 +133,15 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 			WP_CLI::error( "User not found." );
 		}
 
-		$is_temp = get_user_meta( $user->ID, '_sudowp_is_temporary', true );
-		$link    = SudoWP_Auth::get_active_link( $user->ID );
+		// phpcs:ignore WordPress.DB.SlowDBQuery
+		$is_temp = get_user_meta( $user->ID, '_sudo_access_is_temporary', true );
+		$link    = Sudo_Access_Auth::get_active_link( $user->ID );
 
 		WP_CLI::log( "----------------------------------------" );
 		WP_CLI::log( "User ID: " . $user->ID );
 		WP_CLI::log( "Username: " . $user->user_login );
 		WP_CLI::log( "Email: " . $user->user_email );
-		WP_CLI::log( "Type: " . ( $is_temp ? "Temporary Sudo User" : "Standard User" ) );
+		WP_CLI::log( "Type: " . ( $is_temp ? "Temporary Sudo Access User" : "Standard User" ) );
 		
 		if ( $link ) {
 			WP_CLI::log( "Active Link: " . $link );
@@ -167,16 +169,17 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 			WP_CLI::error( "User not found." );
 		}
 
-		$is_temp = get_user_meta( $user->ID, '_sudowp_is_temporary', true );
+		// phpcs:ignore WordPress.DB.SlowDBQuery
+		$is_temp = get_user_meta( $user->ID, '_sudo_access_is_temporary', true );
 
 		if ( ! $is_temp ) {
-			WP_CLI::error( "User is NOT a temporary Sudo user. Cannot delete." );
+			WP_CLI::error( "User is NOT a temporary Sudo Access user. Cannot delete." );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/user.php';
 		
 		if ( wp_delete_user( $user->ID, 1 ) ) {
-			SudoWP_Logger::log( 0, 'sudo_user_revoked', "CLI: Deleted temporary user ID: {$user->ID}" );
+			Sudo_Access_Logger::log( 0, 'sudo_user_revoked', "CLI: Deleted temporary user ID: {$user->ID}" );
 			WP_CLI::success( "Temporary user deleted." );
 		} else {
 			WP_CLI::error( "Failed to delete user." );
@@ -184,37 +187,7 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Configure SudoWP settings.
-	 *
-	 * ## OPTIONS
-	 *
-	 * <key>
-	 * : The setting key (currently only 'delete_data').
-	 *
-	 * <value>
-	 * : The value to set (true/false).
-	 *
-	 * ## EXAMPLES
-	 *
-	 * wp sudo config delete_data true
-	 *
-	 * @when after_wp_load
-	 */
-	public function config( $args, $assoc_args ) {
-		$key   = $args[0];
-		$value = $args[1];
-
-		if ( $key === 'delete_data' ) {
-			$bool_val = filter_var( $value, FILTER_VALIDATE_BOOLEAN );
-			update_option( 'sudowp_delete_data_on_uninstall', $bool_val );
-			WP_CLI::success( "Setting 'delete_data_on_uninstall' set to " . ( $bool_val ? 'TRUE' : 'FALSE' ) );
-		} else {
-			WP_CLI::error( "Unknown config key. Available: delete_data" );
-		}
-	}
-
-	/**
-	 * Manually purge all SudoWP data (Logs & Tables).
+	 * Manually purge all Sudo Access data (Logs & Tables).
 	 * WARNING: This cannot be undone. Users will be revoked.
 	 *
 	 * ## EXAMPLES
@@ -224,12 +197,16 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 	 * @when after_wp_load
 	 */
 	public function purge( $args, $assoc_args ) {
-		WP_CLI::confirm( "Are you sure you want to delete ALL SudoWP logs and database tables? Users will be revoked." );
+		WP_CLI::confirm( "Are you sure you want to delete ALL Sudo Access logs and database tables? Users will be revoked." );
 
 		global $wpdb;
 
 		// 1. Revoke Users
-		$users = get_users( array( 'meta_key' => '_sudowp_is_temporary', 'meta_value' => true ) );
+		$users = get_users( array( 
+			'meta_key'   => '_sudo_access_is_temporary', // phpcs:ignore WordPress.DB.SlowDBQuery
+			'meta_value' => true // phpcs:ignore WordPress.DB.SlowDBQuery
+		) );
+		
 		$count = 0;
 		if ( ! empty( $users ) ) {
 			require_once ABSPATH . 'wp-admin/includes/user.php';
@@ -241,8 +218,9 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 		WP_CLI::log( "Revoked " . $count . " temporary users." );
 
 		// 2. Drop Tables
-		$table_name = $wpdb->prefix . 'sudowp_logs';
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$table_name = $wpdb->prefix . 'sudo_access_logs';
+		
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
 		WP_CLI::log( "Dropped logs table." );
 
@@ -250,4 +228,4 @@ class SudoWP_CLI_Command extends WP_CLI_Command {
 	}
 }
 
-WP_CLI::add_command( 'sudo', 'SudoWP_CLI_Command' );
+WP_CLI::add_command( 'sudo', 'Sudo_Access_CLI_Command' );

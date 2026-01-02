@@ -35,18 +35,18 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 /**
  * Main Class
  */
-class SudoWP {
+class Sudo_Access {
 
 	public function __construct() {
-		new SudoWP_Auth();
+		new Sudo_Access_Auth();
 
 		if ( is_admin() ) {
-			new SudoWP_Admin();
+			new Sudo_Access_Admin();
 		}
 		
 		// Scheduled Hooks
-		add_action( 'sudowp_scheduled_delete_user', array( $this, 'delete_temporary_user' ) );
-		add_action( 'sudowp_daily_maintenance', array( $this, 'process_log_retention' ) );
+		add_action( 'sudo_access_scheduled_delete_user', array( $this, 'delete_temporary_user' ) );
+		add_action( 'sudo_access_daily_maintenance', array( $this, 'process_log_retention' ) );
 	}
 
 	/**
@@ -54,7 +54,8 @@ class SudoWP {
 	 */
 	public function delete_temporary_user( $user_id ) {
 		if ( user_can( $user_id, 'manage_options' ) ) {
-			$is_temp = get_user_meta( $user_id, '_sudowp_is_temporary', true );
+			// phpcs:ignore WordPress.DB.SlowDBQuery
+			$is_temp = get_user_meta( $user_id, '_sudo_access_is_temporary', true );
 			if ( ! $is_temp ) {
 				return;
 			}
@@ -63,9 +64,9 @@ class SudoWP {
 		require_once ABSPATH . 'wp-admin/includes/user.php';
 		wp_delete_user( $user_id, 1 );
 		
-		// Log the system action
-		if ( class_exists( 'SudoWP_Logger' ) ) {
-			SudoWP_Logger::log( 0, 'system_user_cleanup', "Automatically deleted temporary user ID: $user_id" );
+		// Log the system action via new Logger class
+		if ( class_exists( 'Sudo_Access_Logger' ) ) {
+			Sudo_Access_Logger::log( 0, 'system_user_cleanup', "Automatically deleted temporary user ID: $user_id" );
 		}
 	}
 
@@ -73,14 +74,14 @@ class SudoWP {
 	 * 2. Auto-purge old logs based on settings
 	 */
 	public function process_log_retention() {
-		$retention = get_option( 'sudowp_log_retention', 'never' );
+		$retention = get_option( 'sudo_access_log_retention', 'never' );
 
 		if ( 'never' === $retention ) {
 			return;
 		}
 
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'sudowp_logs';
+		$table_name = $wpdb->prefix . 'sudo_access_logs';
 		$days       = 0;
 
 		if ( 'weekly' === $retention ) {
@@ -90,15 +91,9 @@ class SudoWP {
 		}
 
 		if ( $days > 0 ) {
-			// Delete logs older than X days safely using prepare.
-			// The table name is interpolated but defined strictly above, so we ignore the CS warning.
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( 
-				$wpdb->prepare( 
-					"DELETE FROM {$table_name} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", 
-					$days 
-				) 
-			);
+			// Combined ignore for all DB warnings
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days ) );
 		}
 	}
 
@@ -107,12 +102,14 @@ class SudoWP {
 	 */
 	public static function activate() {
 		global $wpdb;
-		$table_name      = $wpdb->prefix . 'sudowp_logs';
+		$table_name      = $wpdb->prefix . 'sudo_access_logs';
 		$charset_collate = $wpdb->get_charset_collate();
 
+		// Added 'username' column for Snapshotting
 		$sql = "CREATE TABLE $table_name (
 			id mediumint(9) NOT NULL AUTO_INCREMENT,
 			user_id bigint(20) NOT NULL,
+			username varchar(60) NOT NULL,
 			action varchar(100) NOT NULL,
 			details text,
 			ip_address varchar(45) NOT NULL,
@@ -123,9 +120,9 @@ class SudoWP {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		// Schedule Daily Maintenance if not exists
-		if ( ! wp_next_scheduled( 'sudowp_daily_maintenance' ) ) {
-			wp_schedule_event( time(), 'daily', 'sudowp_daily_maintenance' );
+		// Schedule Daily Maintenance
+		if ( ! wp_next_scheduled( 'sudo_access_daily_maintenance' ) ) {
+			wp_schedule_event( time(), 'daily', 'sudo_access_daily_maintenance' );
 		}
 	}
 
@@ -133,10 +130,10 @@ class SudoWP {
 	 * Deactivation: Cleanup Hooks & Users
 	 */
 	public static function deactivate() {
-		// Clean up users marked as temporary
+		// Clean up users marked as temporary (New Meta Key)
 		$users = get_users( array(
-			'meta_key'   => '_sudowp_is_temporary',
-			'meta_value' => true,
+			'meta_key'   => '_sudo_access_is_temporary', // phpcs:ignore WordPress.DB.SlowDBQuery
+			'meta_value' => true, // phpcs:ignore WordPress.DB.SlowDBQuery
 		) );
 
 		if ( ! empty( $users ) ) {
@@ -147,12 +144,12 @@ class SudoWP {
 		}
 		
 		// Clear scheduled hooks
-		wp_clear_scheduled_hook( 'sudowp_scheduled_delete_user' );
-		wp_clear_scheduled_hook( 'sudowp_daily_maintenance' );
+		wp_clear_scheduled_hook( 'sudo_access_scheduled_delete_user' );
+		wp_clear_scheduled_hook( 'sudo_access_daily_maintenance' );
 	}
 }
 
-new SudoWP();
+new Sudo_Access();
 
-register_activation_hook( __FILE__, array( 'SudoWP', 'activate' ) );
-register_deactivation_hook( __FILE__, array( 'SudoWP', 'deactivate' ) );
+register_activation_hook( __FILE__, array( 'Sudo_Access', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'Sudo_Access', 'deactivate' ) );

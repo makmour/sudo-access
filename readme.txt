@@ -1,4 +1,4 @@
-=== Sudo Access – Secure Temporary Login & Audit Log ===
+=== Sudo Access ===
 Contributors: wprepublic, thewebcitizen
 Tags: temporary login, audit log, security, wp-cli, support access
 Requires at least: 6.0
