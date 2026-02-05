@@ -4,6 +4,12 @@
     margin-top: 20px;
 }
 
+.sudo-access-wrap h1 .version {
+    font-size: 14px;
+    color: #646970;
+    font-weight: normal;
+}
+
 /* Flex Layout for Cards */
 .sudo-access-flex-container {
     display: flex;
@@ -68,12 +74,27 @@
     white-space: nowrap;
 }
 
+/* Improved Badge Styling */
 .sudo-access-badge {
     background: #f0f0f1;
-    padding: 2px 6px;
+    padding: 4px 8px;
     border-radius: 3px;
-    font-family: monospace;
-    font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.sudo-access-badge.expired {
+    background: #fcf0f1;
+    color: #d63638;
+    border: 1px solid #f0b9bb;
+}
+
+.sudo-access-badge.active {
+    background: #edfaef;
+    color: #00a32a;
+    border: 1px solid #68de7c;
 }
 
 /* Copy Button Input Helper */
@@ -87,4 +108,105 @@
     gap: 10px; 
     max-width: 600px; 
     margin-bottom: 10px;
+}
+
+/* Better Button Styling */
+.sudo-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+/* Loading State */
+.button.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Mobile Responsiveness */
+@media screen and (max-width: 782px) {
+    .sudo-access-table {
+        font-size: 14px;
+    }
+    
+    .sudo-access-copy-wrapper {
+        flex-direction: column;
+    }
+    
+    .sudo-access-card {
+        min-width: 100%;
+    }
+    
+    .sudo-access-table td,
+    .sudo-access-table th {
+        padding: 8px 10px;
+    }
+}
+
+/* Improved Empty State */
+.sudo-access-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+}
+
+.sudo-access-empty-state .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    opacity: 0.3;
+    margin-bottom: 10px;
+}
+
+.sudo-access-empty-state h3 {
+    margin: 10px 0;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+.sudo-access-empty-state p {
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+/* Security Warning Enhancements */
+.notice.notice-warning p strong {
+    color: #d63638;
+}
+
+/* Form Field Help Text */
+.form-table .description {
+    color: #646970;
+    font-size: 13px;
+}
+
+/* Accessibility: Better Focus States */
+.sudo-access-table input[type="checkbox"]:focus {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+button:focus,
+.button:focus {
+    box-shadow: 0 0 0 2px #2271b1;
+    outline: 2px solid transparent;
+}
+
+/* Role Badge in Table */
+.sudo-role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #f0f6fc;
+    color: #0c5d9d;
+    border: 1px solid #c5d9ed;
+}
+
+.sudo-role-badge.admin {
+    background: #fcf0f1;
+    color: #b32d2e;
+    border: 1px solid #f0b9bb;
 }

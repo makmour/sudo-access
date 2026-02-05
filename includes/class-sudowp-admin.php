@@ -125,6 +125,15 @@ class Sudo_Access_Admin {
 	}
 
 	private function render_create_link_tab() {
+		// --- SECURITY WARNING ---
+		if ( ! is_ssl() ) {
+			?>
+			<div class="notice notice-warning" style="margin-left: 0; margin-bottom: 20px;">
+				<p><strong>⚠️ Security Warning:</strong> Your site is not using HTTPS. Sudo Access links should only be used over secure connections to prevent token interception.</p>
+			</div>
+			<?php
+		}
+		
 		// --- SHOW GENERATED LINK ---
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['msg'] ) && 'created' === $_GET['msg'] ) {
@@ -155,18 +164,26 @@ class Sudo_Access_Admin {
 		?>
 		<div class="sudo-access-card">
 			<h2>Generate New Temporary Access</h2>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<p class="description">Create a secure, time-limited login link for temporary access. Users will be automatically deleted when the link expires.</p>
+			
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="sudo-create-form">
 				<input type="hidden" name="action" value="sudo_access_create_link">
 				<?php wp_nonce_field( 'sudo_access_create_action', 'sudo_access_nonce' ); ?>
 				
 				<table class="form-table">
 					<tr>
-						<th><label for="sudo_access_username">Username</label></th>
-						<td><input type="text" name="sudo_access_username" id="sudo_access_username" class="regular-text" required></td>
+						<th><label for="sudo_access_username">Username <span style="color:#d63638;">*</span></label></th>
+						<td>
+							<input type="text" name="sudo_access_username" id="sudo_access_username" class="regular-text" required>
+							<p class="description">Choose a unique username for temporary access.</p>
+						</td>
 					</tr>
 					<tr>
-						<th><label for="sudo_access_email">Email</label></th>
-						<td><input type="email" name="sudo_access_email" id="sudo_access_email" class="regular-text" required></td>
+						<th><label for="sudo_access_email">Email <span style="color:#d63638;">*</span></label></th>
+						<td>
+							<input type="email" name="sudo_access_email" id="sudo_access_email" class="regular-text" required>
+							<p class="description">The login link will be sent to this email address.</p>
+						</td>
 					</tr>
 					<tr>
 						<th><label for="sudo_access_role">Role</label></th>
@@ -176,6 +193,9 @@ class Sudo_Access_Admin {
 								<option value="editor">Editor</option>
 								<option value="author">Author</option>
 							</select>
+							<p class="description" id="role-warning" style="display:none;color:#d63638;font-weight:500;">
+								⚠️ Administrator role grants full site control. Only use for trusted individuals.
+							</p>
 						</td>
 					</tr>
 					<tr>
@@ -187,14 +207,43 @@ class Sudo_Access_Admin {
 								<option value="24" selected>24 Hours</option>
 								<option value="168">7 Days</option>
 							</select>
+							<p class="description">The link and user account will be automatically deleted after this period.</p>
 						</td>
 					</tr>
 				</table>
 				<p class="submit">
-					<button type="submit" class="button button-primary">Generate Sudo Link</button>
+					<button type="submit" class="button button-primary" id="sudo-submit-btn">Generate Sudo Link</button>
+					<span class="spinner" style="float:none;margin:0 0 0 10px;"></span>
 				</p>
 			</form>
 		</div>
+		<script type="text/javascript">
+		jQuery(document).ready(function($) {
+			// Show warning when administrator role is selected
+			$('#sudo_access_role').on('change', function() {
+				if ($(this).val() === 'administrator') {
+					$('#role-warning').show();
+				} else {
+					$('#role-warning').hide();
+				}
+			}).trigger('change');
+			
+			// Confirm before creating administrator
+			$('#sudo-create-form').on('submit', function(e) {
+				var role = $('#sudo_access_role').val();
+				if (role === 'administrator') {
+					if (!confirm('You are about to create a temporary ADMINISTRATOR account. This role has full control over your site.\n\nAre you sure you want to continue?')) {
+						e.preventDefault();
+						return false;
+					}
+				}
+				
+				// Show loading state
+				$('#sudo-submit-btn').prop('disabled', true).addClass('is-loading');
+				$('.spinner').css('visibility', 'visible');
+			});
+		});
+		</script>
 		<?php
 	}
 
@@ -205,6 +254,7 @@ class Sudo_Access_Admin {
 		?>
 		<div class="sudo-access-card">
 			<h2>Active Temporary Users</h2>
+			<p class="description">Manage temporary users and their access links. Expired links are automatically cleaned up.</p>
 			
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="sudo_access_revoke_selected">
@@ -219,6 +269,7 @@ class Sudo_Access_Admin {
 							<th>User</th>
 							<th>Email</th>
 							<th>Role</th>
+							<th>Status</th>
 							<th style="width:140px;">Action</th>
 						</tr>
 					</thead>
@@ -226,27 +277,51 @@ class Sudo_Access_Admin {
 						<?php if ( ! empty( $users ) ) : ?>
 							<?php foreach ( $users as $user ) : 
 								$link = Sudo_Access_Auth::get_active_link( $user->ID );
+								$is_admin = in_array( 'administrator', $user->roles, true );
 							?>
 								<tr>
 									<th scope="row" class="check-column">
 										<input type="checkbox" name="sudo_users[]" class="sudo-user-cb" value="<?php echo esc_attr( $user->ID ); ?>">
 									</th>
-									<td><?php echo esc_html( $user->user_login ); ?></td>
+									<td><strong><?php echo esc_html( $user->user_login ); ?></strong></td>
 									<td><?php echo esc_html( $user->user_email ); ?></td>
-									<td><?php echo esc_html( implode( ', ', $user->roles ) ); ?></td>
+									<td>
+										<span class="sudo-role-badge <?php echo $is_admin ? 'admin' : ''; ?>">
+											<?php echo esc_html( implode( ', ', $user->roles ) ); ?>
+										</span>
+									</td>
+									<td>
+										<?php if ( $link ) : ?>
+											<span class="sudo-access-badge active">
+												<span class="dashicons dashicons-yes-alt" style="font-size:12px;line-height:1;vertical-align:middle;"></span> Active
+											</span>
+										<?php else : ?>
+											<span class="sudo-access-badge expired">
+												<span class="dashicons dashicons-dismiss" style="font-size:12px;line-height:1;vertical-align:middle;"></span> Expired
+											</span>
+										<?php endif; ?>
+									</td>
 									<td>
 										<?php if ( $link ) : ?>
 											<button type="button" class="button button-secondary sudo-copy-btn" data-link="<?php echo esc_attr( $link ); ?>">
 												<span class="dashicons dashicons-admin-links" style="line-height: 1.3;"></span> Copy Link
 											</button>
 										<?php else : ?>
-											<span class="sudo-access-badge">Expired</span>
+											<span style="color:#646970;font-size:12px;">No active link</span>
 										<?php endif; ?>
 									</td>
 								</tr>
 							<?php endforeach; ?>
 						<?php else : ?>
-							<tr><td colspan="5">No active temporary users.</td></tr>
+							<tr>
+								<td colspan="6">
+									<div class="sudo-access-empty-state">
+										<span class="dashicons dashicons-admin-users"></span>
+										<h3>No Temporary Users</h3>
+										<p>You haven't created any temporary access links yet. Create your first link from the "Create Sudo Link" tab.</p>
+									</div>
+								</td>
+							</tr>
 						<?php endif; ?>
 					</tbody>
 				</table>
@@ -395,6 +470,17 @@ class Sudo_Access_Admin {
 		$role     = isset( $_POST['sudo_access_role'] ) ? sanitize_text_field( wp_unslash( $_POST['sudo_access_role'] ) ) : 'administrator';
 		$expiry   = isset( $_POST['sudo_access_expiry'] ) ? intval( $_POST['sudo_access_expiry'] ) : 24;
 
+		// Additional security check: Only super admins can create administrator roles on multisite
+		if ( 'administrator' === $role && is_multisite() && ! current_user_can( 'manage_network' ) ) {
+			wp_die( 'Only super administrators can create administrator access on multisite installations.' );
+		}
+		
+		// Additional security check: Verify role exists and is valid
+		$valid_roles = array( 'administrator', 'editor', 'author' );
+		if ( ! in_array( $role, $valid_roles, true ) ) {
+			wp_die( 'Invalid role specified.' );
+		}
+
 		$seconds    = $expiry * HOUR_IN_SECONDS;
 		
 		// Use centralized Auth Logic (Class name updated)
@@ -406,6 +492,12 @@ class Sudo_Access_Admin {
 
 		$user = $result['user'];
 		$token = Sudo_Access_Auth::generate_token( $user->ID, $seconds );
+		
+		// Handle WP_Error from token generation
+		if ( is_wp_error( $token ) ) {
+			wp_die( esc_html( $token->get_error_message() ) );
+		}
+		
 		$link  = add_query_arg( 'sudo_token', $token, site_url() );
 		
 		// Optional: Send email explicitly if not handled inside create logic
@@ -425,32 +517,60 @@ class Sudo_Access_Admin {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.SlowDBQuery
 		$logs = $wpdb->get_results( "SELECT * FROM {$logs_table} ORDER BY id DESC LIMIT 50" );
 		
-		echo '<div class="sudo-access-card"><h2>Security Logs</h2><table class="widefat fixed striped sudo-access-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th><th>IP</th></tr></thead><tbody>';
-		if ( ! empty( $logs ) ) {
-			foreach ( $logs as $log ) {
-				echo '<tr>';
-				echo '<td>' . esc_html( $log->created_at ) . '</td>';
-				
-				// --- CHANGED: Use stored username first. Fallback to ID look up. ---
-				$display_name = 'Unknown';
-				if ( ! empty( $log->username ) ) {
-					$display_name = $log->username;
-				} elseif ( $log->user_id > 0 ) {
-					$u = get_userdata( $log->user_id );
-					$display_name = $u ? $u->user_login : 'Deleted User (ID ' . $log->user_id . ')';
-				} elseif ( '0' == $log->user_id ) { // Loose comparison intended
-					$display_name = 'System';
-				}
-
-				echo '<td><strong>' . esc_html( $display_name ) . '</strong></td>';
-				echo '<td>' . esc_html( $log->action ) . '</td>';
-				echo '<td>' . esc_html( $log->details ) . '</td>';
-				echo '<td>' . esc_html( $log->ip_address ) . '</td>';
-				echo '</tr>';
-			}
-		} else {
-			echo '<tr><td colspan="5">No logs found.</td></tr>';
-		}
-		echo '</tbody></table></div>';
+		?>
+		<div class="sudo-access-card">
+			<h2>Security Logs</h2>
+			<p class="description">View the last 50 security events. Configure log retention in Settings.</p>
+			
+			<table class="widefat fixed striped sudo-access-table">
+				<thead>
+					<tr>
+						<th style="width:160px;">Time</th>
+						<th style="width:120px;">User</th>
+						<th style="width:180px;">Action</th>
+						<th>Details</th>
+						<th style="width:130px;">IP</th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php if ( ! empty( $logs ) ) : ?>
+						<?php foreach ( $logs as $log ) : ?>
+							<tr>
+								<td><?php echo esc_html( $log->created_at ); ?></td>
+								<td>
+									<?php
+									// Use stored username first. Fallback to ID look up.
+									$display_name = 'Unknown';
+									if ( ! empty( $log->username ) ) {
+										$display_name = $log->username;
+									} elseif ( $log->user_id > 0 ) {
+										$u = get_userdata( $log->user_id );
+										$display_name = $u ? $u->user_login : 'Deleted User (ID ' . $log->user_id . ')';
+									} elseif ( '0' == $log->user_id ) { // Loose comparison intended
+										$display_name = 'System';
+									}
+									?>
+									<strong><?php echo esc_html( $display_name ); ?></strong>
+								</td>
+								<td><code style="font-size:11px;"><?php echo esc_html( $log->action ); ?></code></td>
+								<td><?php echo esc_html( $log->details ); ?></td>
+								<td><code style="font-size:11px;"><?php echo esc_html( $log->ip_address ); ?></code></td>
+							</tr>
+						<?php endforeach; ?>
+					<?php else : ?>
+						<tr>
+							<td colspan="5">
+								<div class="sudo-access-empty-state">
+									<span class="dashicons dashicons-shield-alt"></span>
+									<h3>No Security Logs</h3>
+									<p>Security events will appear here once you start using Sudo Access.</p>
+								</div>
+							</td>
+						</tr>
+					<?php endif; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
 	}
 }
