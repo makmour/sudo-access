@@ -60,6 +60,11 @@ class Sudo_Access_Auth {
 	public static function generate_token( $user_id, $expiry_seconds, $restrict_ip = '' ) {
 		$token = bin2hex( random_bytes( 32 ) );
 		
+		// Validate IP address if provided
+		if ( ! empty( $restrict_ip ) && ! filter_var( $restrict_ip, FILTER_VALIDATE_IP ) ) {
+			return new WP_Error( 'invalid_ip', 'Invalid IP address format.' );
+		}
+		
 		$data = array(
 			'user_id'     => $user_id,
 			'restrict_ip' => $restrict_ip,
@@ -98,18 +103,21 @@ class Sudo_Access_Auth {
 	 */
 	public static function send_access_email( $user, $link, $hours ) {
 		$site_name = get_bloginfo( 'name' );
-		$subject   = sprintf( '[%s] Your Sudo Access Link', $site_name );
+		
+		// Sanitize all email components to prevent header injection
+		$to = sanitize_email( $user->user_email );
+		$subject = sprintf( '[%s] Your Sudo Access Link', sanitize_text_field( $site_name ) );
 		
 		$message  = "Hello,\n\n";
-		$message .= "A temporary administrative access link has been generated for you on {$site_name}.\n\n";
+		$message .= "A temporary administrative access link has been generated for you on " . sanitize_text_field( $site_name ) . ".\n\n";
 		$message .= "Click the link below to login (no password required):\n";
-		$message .= $link . "\n\n";
-		$message .= "This link will expire in {$hours} hours.\n";
+		$message .= esc_url_raw( $link ) . "\n\n";
+		$message .= "This link will expire in " . absint( $hours ) . " hours.\n";
 		$message .= "Security Note: Do not share this link with anyone.";
 
 		$headers = array( 'Content-Type: text/plain; charset=UTF-8' );
 
-		wp_mail( $user->user_email, $subject, $message, $headers );
+		wp_mail( $to, $subject, $message, $headers );
 	}
 
 	/**
@@ -125,10 +133,39 @@ class Sudo_Access_Auth {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$token = sanitize_text_field( wp_unslash( $_GET['sudo_token'] ) );
+		
+		// Rate limiting: Check for too many failed attempts from this IP
+		$ip = '';
+		if ( isset( $_SERVER['REMOTE_ADDR'] ) ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			$ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+		}
+		
+		$rate_limit_key = 'sudo_access_attempts_' . md5( $ip );
+		$attempts = get_transient( $rate_limit_key );
+		
+		if ( $attempts && $attempts >= 5 ) {
+			Sudo_Access_Logger::log( 0, 'rate_limit_exceeded', 'Too many failed login attempts from IP: ' . esc_html( $ip ) );
+			wp_die( 
+				esc_html__( 'Too many failed attempts. Please try again in 15 minutes.', 'sudo-access' ), 
+				esc_html__( 'Access Denied', 'sudo-access' ), 
+				array( 'response' => 429 ) 
+			);
+		}
+		
 		$data  = get_transient( 'sudo_access_' . $token );
 
 		if ( ! $data ) {
-			wp_die( 'Sudo Access: This link has expired or is invalid.', 'Access Denied', array( 'response' => 403 ) );
+			// Increment failed attempts
+			$new_attempts = $attempts ? $attempts + 1 : 1;
+			set_transient( $rate_limit_key, $new_attempts, 15 * MINUTE_IN_SECONDS );
+			
+			Sudo_Access_Logger::log( 0, 'failed_login_invalid_token', 'Invalid token attempt from IP: ' . esc_html( $ip ) );
+			wp_die( 
+				esc_html__( 'This link has expired or is invalid.', 'sudo-access' ), 
+				esc_html__( 'Access Denied', 'sudo-access' ), 
+				array( 'response' => 403 ) 
+			);
 		}
 
 		if ( ! empty( $data['restrict_ip'] ) ) {
@@ -141,13 +178,30 @@ class Sudo_Access_Auth {
 			}
 
 			if ( $current_ip !== $data['restrict_ip'] ) {
+				// Increment failed attempts
+				$new_attempts = $attempts ? $attempts + 1 : 1;
+				set_transient( $rate_limit_key, $new_attempts, 15 * MINUTE_IN_SECONDS );
+				
 				Sudo_Access_Logger::log( $data['user_id'], 'failed_login_ip_mismatch', "Expected: {$data['restrict_ip']}, Got: $current_ip" );
-				wp_die( 'Sudo Access: IP Address mismatch.', 'Access Denied', array( 'response' => 403 ) );
+				wp_die( 
+					esc_html__( 'IP Address mismatch.', 'sudo-access' ), 
+					esc_html__( 'Access Denied', 'sudo-access' ), 
+					array( 'response' => 403 ) 
+				);
 			}
 		}
 
+		// Clear failed attempts on successful login
+		delete_transient( $rate_limit_key );
+
 		$user_id = $data['user_id'];
+		
+		// Clear old session to prevent session fixation
+		wp_destroy_current_session();
+		wp_clear_auth_cookie();
+		
 		wp_set_auth_cookie( $user_id );
+		do_action( 'wp_login', get_userdata( $user_id )->user_login, get_userdata( $user_id ) );
 		
 		Sudo_Access_Logger::log( $user_id, 'sudo_login_success', 'Logged in via Sudo Link.' );
 
