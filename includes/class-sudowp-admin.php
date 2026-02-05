@@ -129,7 +129,7 @@ class Sudo_Access_Admin {
 		if ( ! is_ssl() ) {
 			?>
 			<div class="notice notice-warning" style="margin-left: 0; margin-bottom: 20px;">
-				<p><strong>⚠️ Security Warning:</strong> Your site is not using HTTPS. Sudo Access links should only be used over secure connections to prevent token interception.</p>
+				<p><strong><?php esc_html_e( '⚠️ Security Warning:', 'sudo-access' ); ?></strong> <?php esc_html_e( 'Your site is not using HTTPS. Sudo Access links should only be used over secure connections to prevent token interception.', 'sudo-access' ); ?></p>
 			</div>
 			<?php
 		}
@@ -163,8 +163,8 @@ class Sudo_Access_Admin {
 		// ---------------------------
 		?>
 		<div class="sudo-access-card">
-			<h2>Generate New Temporary Access</h2>
-			<p class="description">Create a secure, time-limited login link for temporary access. Users will be automatically deleted when the link expires.</p>
+			<h2><?php esc_html_e( 'Generate New Temporary Access', 'sudo-access' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Create a secure, time-limited login link for temporary access. Users will be automatically deleted when the link expires.', 'sudo-access' ); ?></p>
 			
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="sudo-create-form">
 				<input type="hidden" name="action" value="sudo_access_create_link">
@@ -172,47 +172,47 @@ class Sudo_Access_Admin {
 				
 				<table class="form-table">
 					<tr>
-						<th><label for="sudo_access_username">Username <span style="color:#d63638;">*</span></label></th>
+						<th><label for="sudo_access_username"><?php esc_html_e( 'Username', 'sudo-access' ); ?> <span style="color:#d63638;">*</span></label></th>
 						<td>
 							<input type="text" name="sudo_access_username" id="sudo_access_username" class="regular-text" required>
-							<p class="description">Choose a unique username for temporary access.</p>
+							<p class="description"><?php esc_html_e( 'Choose a unique username for temporary access.', 'sudo-access' ); ?></p>
 						</td>
 					</tr>
 					<tr>
-						<th><label for="sudo_access_email">Email <span style="color:#d63638;">*</span></label></th>
+						<th><label for="sudo_access_email"><?php esc_html_e( 'Email', 'sudo-access' ); ?> <span style="color:#d63638;">*</span></label></th>
 						<td>
 							<input type="email" name="sudo_access_email" id="sudo_access_email" class="regular-text" required>
-							<p class="description">The login link will be sent to this email address.</p>
+							<p class="description"><?php esc_html_e( 'The login link will be sent to this email address.', 'sudo-access' ); ?></p>
 						</td>
 					</tr>
 					<tr>
-						<th><label for="sudo_access_role">Role</label></th>
+						<th><label for="sudo_access_role"><?php esc_html_e( 'Role', 'sudo-access' ); ?></label></th>
 						<td>
 							<select name="sudo_access_role" id="sudo_access_role">
-								<option value="administrator">Administrator</option>
-								<option value="editor">Editor</option>
-								<option value="author">Author</option>
+								<option value="administrator"><?php esc_html_e( 'Administrator', 'sudo-access' ); ?></option>
+								<option value="editor"><?php esc_html_e( 'Editor', 'sudo-access' ); ?></option>
+								<option value="author"><?php esc_html_e( 'Author', 'sudo-access' ); ?></option>
 							</select>
 							<p class="description" id="role-warning" style="display:none;color:#d63638;font-weight:500;">
-								⚠️ Administrator role grants full site control. Only use for trusted individuals.
+								<?php esc_html_e( '⚠️ Administrator role grants full site control. Only use for trusted individuals.', 'sudo-access' ); ?>
 							</p>
 						</td>
 					</tr>
 					<tr>
-						<th><label for="sudo_access_expiry">Expires In</label></th>
+						<th><label for="sudo_access_expiry"><?php esc_html_e( 'Expires In', 'sudo-access' ); ?></label></th>
 						<td>
 							<select name="sudo_access_expiry" id="sudo_access_expiry">
-								<option value="1">1 Hour</option>
-								<option value="4">4 Hours</option>
-								<option value="24" selected>24 Hours</option>
-								<option value="168">7 Days</option>
+								<option value="1"><?php esc_html_e( '1 Hour', 'sudo-access' ); ?></option>
+								<option value="4"><?php esc_html_e( '4 Hours', 'sudo-access' ); ?></option>
+								<option value="24" selected><?php esc_html_e( '24 Hours', 'sudo-access' ); ?></option>
+								<option value="168"><?php esc_html_e( '7 Days', 'sudo-access' ); ?></option>
 							</select>
-							<p class="description">The link and user account will be automatically deleted after this period.</p>
+							<p class="description"><?php esc_html_e( 'The link and user account will be automatically deleted after this period.', 'sudo-access' ); ?></p>
 						</td>
 					</tr>
 				</table>
 				<p class="submit">
-					<button type="submit" class="button button-primary" id="sudo-submit-btn">Generate Sudo Link</button>
+					<button type="submit" class="button button-primary" id="sudo-submit-btn"><?php esc_html_e( 'Generate Sudo Link', 'sudo-access' ); ?></button>
 					<span class="spinner" style="float:none;margin:0 0 0 10px;"></span>
 				</p>
 			</form>
@@ -232,7 +232,7 @@ class Sudo_Access_Admin {
 			$('#sudo-create-form').on('submit', function(e) {
 				var role = $('#sudo_access_role').val();
 				if (role === 'administrator') {
-					if (!confirm('You are about to create a temporary ADMINISTRATOR account. This role has full control over your site.\n\nAre you sure you want to continue?')) {
+					if (!confirm(<?php echo wp_json_encode( __( 'You are about to create a temporary ADMINISTRATOR account. This role has full control over your site.\n\nAre you sure you want to continue?', 'sudo-access' ) ); ?>)) {
 						e.preventDefault();
 						return false;
 					}
@@ -253,8 +253,8 @@ class Sudo_Access_Admin {
 		
 		?>
 		<div class="sudo-access-card">
-			<h2>Active Temporary Users</h2>
-			<p class="description">Manage temporary users and their access links. Expired links are automatically cleaned up.</p>
+			<h2><?php esc_html_e( 'Active Temporary Users', 'sudo-access' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Manage temporary users and their access links. Expired links are automatically cleaned up.', 'sudo-access' ); ?></p>
 			
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="sudo_access_revoke_selected">
@@ -266,11 +266,11 @@ class Sudo_Access_Admin {
 							<td id="cb" class="manage-column column-cb check-column">
 								<input id="cb-select-all-1" type="checkbox">
 							</td>
-							<th>User</th>
-							<th>Email</th>
-							<th>Role</th>
-							<th>Status</th>
-							<th style="width:140px;">Action</th>
+							<th><?php esc_html_e( 'User', 'sudo-access' ); ?></th>
+							<th><?php esc_html_e( 'Email', 'sudo-access' ); ?></th>
+							<th><?php esc_html_e( 'Role', 'sudo-access' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'sudo-access' ); ?></th>
+							<th style="width:140px;"><?php esc_html_e( 'Action', 'sudo-access' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -293,21 +293,21 @@ class Sudo_Access_Admin {
 									<td>
 										<?php if ( $link ) : ?>
 											<span class="sudo-access-badge active">
-												<span class="dashicons dashicons-yes-alt" style="font-size:12px;line-height:1;vertical-align:middle;"></span> Active
+												<span class="dashicons dashicons-yes-alt" style="font-size:12px;line-height:1;vertical-align:middle;"></span> <?php esc_html_e( 'Active', 'sudo-access' ); ?>
 											</span>
 										<?php else : ?>
 											<span class="sudo-access-badge expired">
-												<span class="dashicons dashicons-dismiss" style="font-size:12px;line-height:1;vertical-align:middle;"></span> Expired
+												<span class="dashicons dashicons-dismiss" style="font-size:12px;line-height:1;vertical-align:middle;"></span> <?php esc_html_e( 'Expired', 'sudo-access' ); ?>
 											</span>
 										<?php endif; ?>
 									</td>
 									<td>
 										<?php if ( $link ) : ?>
 											<button type="button" class="button button-secondary sudo-copy-btn" data-link="<?php echo esc_attr( $link ); ?>">
-												<span class="dashicons dashicons-admin-links" style="line-height: 1.3;"></span> Copy Link
+												<span class="dashicons dashicons-admin-links" style="line-height: 1.3;"></span> <?php esc_html_e( 'Copy Link', 'sudo-access' ); ?>
 											</button>
 										<?php else : ?>
-											<span style="color:#646970;font-size:12px;">No active link</span>
+											<span style="color:#646970;font-size:12px;"><?php esc_html_e( 'No active link', 'sudo-access' ); ?></span>
 										<?php endif; ?>
 									</td>
 								</tr>
@@ -317,8 +317,8 @@ class Sudo_Access_Admin {
 								<td colspan="6">
 									<div class="sudo-access-empty-state">
 										<span class="dashicons dashicons-admin-users"></span>
-										<h3>No Temporary Users</h3>
-										<p>You haven't created any temporary access links yet. Create your first link from the "Create Sudo Link" tab.</p>
+										<h3><?php esc_html_e( 'No Temporary Users', 'sudo-access' ); ?></h3>
+										<p><?php esc_html_e( 'You haven\'t created any temporary access links yet. Create your first link from the "Create Sudo Link" tab.', 'sudo-access' ); ?></p>
 									</div>
 								</td>
 							</tr>
@@ -329,7 +329,7 @@ class Sudo_Access_Admin {
 				<?php if ( ! empty( $users ) ) : ?>
 					<div class="tablenav bottom" style="margin-top: 15px;">
 						<div class="alignleft actions">
-							<button type="submit" class="button button-link-delete" onclick="return confirm('Are you sure you want to delete the selected users? This action cannot be undone.');">Revoke Selected</button>
+							<button type="submit" class="button button-link-delete" onclick="return confirm(<?php echo esc_js( __( 'Are you sure you want to delete the selected users? This action cannot be undone.', 'sudo-access' ) ); ?>);"><?php esc_html_e( 'Revoke Selected', 'sudo-access' ); ?></button>
 						</div>
 					</div>
 				<?php endif; ?>
@@ -472,13 +472,13 @@ class Sudo_Access_Admin {
 
 		// Additional security check: Only super admins can create administrator roles on multisite
 		if ( 'administrator' === $role && is_multisite() && ! current_user_can( 'manage_network' ) ) {
-			wp_die( 'Only super administrators can create administrator access on multisite installations.' );
+			wp_die( esc_html__( 'Only super administrators can create administrator access on multisite installations.', 'sudo-access' ) );
 		}
 		
 		// Additional security check: Verify role exists and is valid
 		$valid_roles = array( 'administrator', 'editor', 'author' );
 		if ( ! in_array( $role, $valid_roles, true ) ) {
-			wp_die( 'Invalid role specified.' );
+			wp_die( esc_html__( 'Invalid role specified.', 'sudo-access' ) );
 		}
 
 		$seconds    = $expiry * HOUR_IN_SECONDS;
@@ -519,17 +519,17 @@ class Sudo_Access_Admin {
 		
 		?>
 		<div class="sudo-access-card">
-			<h2>Security Logs</h2>
-			<p class="description">View the last 50 security events. Configure log retention in Settings.</p>
+			<h2><?php esc_html_e( 'Security Logs', 'sudo-access' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'View the last 50 security events. Configure log retention in Settings.', 'sudo-access' ); ?></p>
 			
 			<table class="widefat fixed striped sudo-access-table">
 				<thead>
 					<tr>
-						<th style="width:160px;">Time</th>
-						<th style="width:120px;">User</th>
-						<th style="width:180px;">Action</th>
-						<th>Details</th>
-						<th style="width:130px;">IP</th>
+						<th style="width:160px;"><?php esc_html_e( 'Time', 'sudo-access' ); ?></th>
+						<th style="width:120px;"><?php esc_html_e( 'User', 'sudo-access' ); ?></th>
+						<th style="width:180px;"><?php esc_html_e( 'Action', 'sudo-access' ); ?></th>
+						<th><?php esc_html_e( 'Details', 'sudo-access' ); ?></th>
+						<th style="width:130px;"><?php esc_html_e( 'IP', 'sudo-access' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -562,8 +562,8 @@ class Sudo_Access_Admin {
 							<td colspan="5">
 								<div class="sudo-access-empty-state">
 									<span class="dashicons dashicons-shield-alt"></span>
-									<h3>No Security Logs</h3>
-									<p>Security events will appear here once you start using Sudo Access.</p>
+									<h3><?php esc_html_e( 'No Security Logs', 'sudo-access' ); ?></h3>
+									<p><?php esc_html_e( 'Security events will appear here once you start using Sudo Access.', 'sudo-access' ); ?></p>
 								</div>
 							</td>
 						</tr>

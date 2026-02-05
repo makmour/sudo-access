@@ -146,7 +146,11 @@ class Sudo_Access_Auth {
 		
 		if ( $attempts && $attempts >= 5 ) {
 			Sudo_Access_Logger::log( 0, 'rate_limit_exceeded', "Too many failed login attempts from IP: $ip" );
-			wp_die( 'Sudo Access: Too many failed attempts. Please try again in 15 minutes.', 'Access Denied', array( 'response' => 429 ) );
+			wp_die( 
+				esc_html__( 'Too many failed attempts. Please try again in 15 minutes.', 'sudo-access' ), 
+				esc_html__( 'Access Denied', 'sudo-access' ), 
+				array( 'response' => 429 ) 
+			);
 		}
 		
 		$data  = get_transient( 'sudo_access_' . $token );
@@ -157,7 +161,11 @@ class Sudo_Access_Auth {
 			set_transient( $rate_limit_key, $new_attempts, 15 * MINUTE_IN_SECONDS );
 			
 			Sudo_Access_Logger::log( 0, 'failed_login_invalid_token', "Invalid token attempt from IP: $ip" );
-			wp_die( 'Sudo Access: This link has expired or is invalid.', 'Access Denied', array( 'response' => 403 ) );
+			wp_die( 
+				esc_html__( 'This link has expired or is invalid.', 'sudo-access' ), 
+				esc_html__( 'Access Denied', 'sudo-access' ), 
+				array( 'response' => 403 ) 
+			);
 		}
 
 		if ( ! empty( $data['restrict_ip'] ) ) {
@@ -175,7 +183,11 @@ class Sudo_Access_Auth {
 				set_transient( $rate_limit_key, $new_attempts, 15 * MINUTE_IN_SECONDS );
 				
 				Sudo_Access_Logger::log( $data['user_id'], 'failed_login_ip_mismatch', "Expected: {$data['restrict_ip']}, Got: $current_ip" );
-				wp_die( 'Sudo Access: IP Address mismatch.', 'Access Denied', array( 'response' => 403 ) );
+				wp_die( 
+					esc_html__( 'IP Address mismatch.', 'sudo-access' ), 
+					esc_html__( 'Access Denied', 'sudo-access' ), 
+					array( 'response' => 403 ) 
+				);
 			}
 		}
 
