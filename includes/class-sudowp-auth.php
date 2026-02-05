@@ -145,7 +145,7 @@ class Sudo_Access_Auth {
 		$attempts = get_transient( $rate_limit_key );
 		
 		if ( $attempts && $attempts >= 5 ) {
-			Sudo_Access_Logger::log( 0, 'rate_limit_exceeded', "Too many failed login attempts from IP: $ip" );
+			Sudo_Access_Logger::log( 0, 'rate_limit_exceeded', 'Too many failed login attempts from IP: ' . esc_html( $ip ) );
 			wp_die( 
 				esc_html__( 'Too many failed attempts. Please try again in 15 minutes.', 'sudo-access' ), 
 				esc_html__( 'Access Denied', 'sudo-access' ), 
@@ -160,7 +160,7 @@ class Sudo_Access_Auth {
 			$new_attempts = $attempts ? $attempts + 1 : 1;
 			set_transient( $rate_limit_key, $new_attempts, 15 * MINUTE_IN_SECONDS );
 			
-			Sudo_Access_Logger::log( 0, 'failed_login_invalid_token', "Invalid token attempt from IP: $ip" );
+			Sudo_Access_Logger::log( 0, 'failed_login_invalid_token', 'Invalid token attempt from IP: ' . esc_html( $ip ) );
 			wp_die( 
 				esc_html__( 'This link has expired or is invalid.', 'sudo-access' ), 
 				esc_html__( 'Access Denied', 'sudo-access' ), 

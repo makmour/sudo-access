@@ -318,7 +318,7 @@ class Sudo_Access_Admin {
 									<div class="sudo-access-empty-state">
 										<span class="dashicons dashicons-admin-users"></span>
 										<h3><?php esc_html_e( 'No Temporary Users', 'sudo-access' ); ?></h3>
-										<p><?php esc_html_e( 'You haven\'t created any temporary access links yet. Create your first link from the "Create Sudo Link" tab.', 'sudo-access' ); ?></p>
+										<p><?php esc_html_e( "You haven't created any temporary access links yet. Create your first link from the \"Create Sudo Link\" tab.", 'sudo-access' ); ?></p>
 									</div>
 								</td>
 							</tr>
@@ -329,12 +329,22 @@ class Sudo_Access_Admin {
 				<?php if ( ! empty( $users ) ) : ?>
 					<div class="tablenav bottom" style="margin-top: 15px;">
 						<div class="alignleft actions">
-							<button type="submit" class="button button-link-delete" onclick="return confirm(<?php echo esc_js( __( 'Are you sure you want to delete the selected users? This action cannot be undone.', 'sudo-access' ) ); ?>);"><?php esc_html_e( 'Revoke Selected', 'sudo-access' ); ?></button>
+							<button type="submit" class="button button-link-delete sudo-revoke-btn"><?php esc_html_e( 'Revoke Selected', 'sudo-access' ); ?></button>
 						</div>
 					</div>
 				<?php endif; ?>
 			</form>
 		</div>
+		<script type="text/javascript">
+		jQuery(document).ready(function($) {
+			$('.sudo-revoke-btn').on('click', function(e) {
+				if (!confirm(<?php echo wp_json_encode( __( 'Are you sure you want to delete the selected users? This action cannot be undone.', 'sudo-access' ) ); ?>)) {
+					e.preventDefault();
+					return false;
+				}
+			});
+		});
+		</script>
 		<?php
 	}
 
